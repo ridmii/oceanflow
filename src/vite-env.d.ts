@@ -1,0 +1,17 @@
+/// <reference types="vite/client" />
+
+// Vite ?raw import support for GLSL files
+declare module '*.glsl?raw' {
+  const content: string;
+  export default content;
+}
+
+declare module '*.vert?raw' {
+  const content: string;
+  export default content;
+}
+
+declare module '*.frag?raw' {
+  const content: string;
+  export default content;
+}

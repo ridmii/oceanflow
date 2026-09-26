@@ -1,0 +1,28 @@
+# simulation.yaml
+# Placeholder configuration for the Ocean Plastic Transport simulation.
+# Values here are defaults; most can be overridden via environment variables in .env.
+# See README.md for a full description of each field.
+
+region:
+  west: -160
+  east: -120
+  south: 20
+  north: 50
+
+time:
+  start: "2024-01-01"
+  end: "2024-01-02"
+  time_step_hours: 6
+
+particles:
+  count: 40000
+  max_age_days: 1095          # 3 years = 365 * 3
+  windage_percent: 1.5        # Fraction of 10m wind velocity applied to surface particles
+  diffusion_m2_per_s: 50      # Horizontal diffusion coefficient (Kh)
+  beaching_enabled: false     # Set true once coastline data is integrated
+
+output:
+  frames_dir: "data/runs/{run_id}/frames"
+  density_dir: "data/runs/{run_id}/density"
+  heatmap_cols: 720           # 0.5-degree longitude resolution
+  heatmap_rows: 360           # 0.5-degree latitude resolution

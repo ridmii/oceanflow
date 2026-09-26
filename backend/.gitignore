@@ -1,0 +1,15 @@
+.env
+data/
+*.nc
+*.zarr
+__pycache__/
+.ipynb_checkpoints/
+*.pyc
+*.pyo
+.venv/
+copernicus-env/
+.DS_Store
+*.egg-info/
+dist/
+build/
+.pytest_cache/

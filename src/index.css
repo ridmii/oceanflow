@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Global reset ───────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #050810;
+}
+
+body {
+  font-family: 'Inter', 'IBM Plex Sans', system-ui, sans-serif;
+  color: rgba(255, 255, 255, 0.85);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Numeric readouts use tabular figures ───────────────────────── */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-family: 'IBM Plex Mono', 'Fira Mono', monospace;
+}
+
+/* ── Glass panel base ───────────────────────────────────────────── */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 0.75rem;
+}
+
+/* ── Focus rings (accessibility) ────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid #6ec6e8;
+  outline-offset: 2px;
+}
+
+/* ── Custom scrollbar ───────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+/* ── Timeline range input styling ───────────────────────────────── */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  cursor: pointer;
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #6ec6e8;
+  border: 2px solid #050810;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+input[type='range']::-webkit-slider-thumb:hover {
+  transform: scale(1.3);
+}
+input[type='range']::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #6ec6e8;
+  border: 2px solid #050810;
+  cursor: pointer;
+}
+
+/* ── Checkbox styling ───────────────────────────────────────────── */
+input[type='checkbox'] {
+  accent-color: #6ec6e8;
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+/* ── Reduced motion ─────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Responsive: below 768px collapse side panels ──────────────── */
+@media (max-width: 767px) {
+  .panel-collapsible {
+    display: none;
+  }
+  .panel-collapsible.panel-open {
+    display: block;
+  }
+}

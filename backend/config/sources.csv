@@ -1,0 +1,34 @@
+# sources.csv — 20 largest river plastic sources (Meijer et al. 2021)
+#
+# COLUMNS:
+#   id         : machine-readable slug (matches frontend sourceConfig.ts)
+#   name       : human-readable river name
+#   lon        : mouth longitude (decimal degrees, WGS84)
+#   lat        : mouth latitude  (decimal degrees, WGS84)
+#   intensity  : relative emission rate, 0–1 (APPROXIMATION — for MVP only)
+#                Real values from Meijer et al. 2021 Table S1; normalised to
+#                Yangtze = 1.0. Do NOT use for scientific publication.
+#   color      : hex colour from Tableau10 + Set3 categorical palette
+#                (matches frontend MockParticleSource colour assignment)
+#
+id,name,lon,lat,intensity,color
+yangtze,Yangtze,121.0,31.4,1.00,#4e79a7
+ganges,Ganges,90.0,22.0,0.85,#f28e2b
+mekong,Mekong,106.5,10.0,0.75,#e15759
+nile,Nile,31.0,30.0,0.60,#76b7b2
+amazon,Amazon,-50.0,-1.0,0.55,#59a14f
+mississippi,Mississippi,-90.0,29.0,0.50,#edc948
+danube,Danube,29.0,45.0,0.45,#b07aa1
+niger,Niger,5.0,8.0,0.42,#ff9da7
+indus,Indus,67.0,24.0,0.40,#9c755f
+pearl,Pearl,113.5,22.5,0.38,#bab0ac
+volga,Volga,48.0,46.0,0.35,#8cd17d
+brahmaputra,Brahmaputra,90.5,24.0,0.33,#b6992d
+irrawaddy,Irrawaddy,95.0,17.0,0.30,#499894
+solo,Solo,112.0,-7.0,0.28,#86bcb6
+pasig,Pasig,120.9,14.6,0.25,#f1ce63
+chaophraya,Chao Phraya,100.5,13.5,0.23,#f2f2f2
+hlaing,Hlaing,96.0,16.8,0.20,#a0cbe8
+cross,Cross,8.0,5.0,0.18,#ffbe7d
+imo,Imo,7.0,4.8,0.16,#fabfd2
+magdalena,Magdalena,-74.0,10.5,0.15,#d37295
