@@ -105,7 +105,7 @@ src/
 │   └── sourceConfig.ts         # ACTIVE_SOURCE flag + river sources
 ├── scene/
 │   ├── Scene.tsx         # R3F Canvas composition
-│   ├── Globe.tsx         # three-globe with atmosphere shader
+│   ├── Globe.tsx         # Textured 3D globe with bump mapping
 │   ├── ParticleLayer.tsx # THREE.Points with ShaderMaterial
 │   ├── DensityHeatmap.tsx
 │   ├── TrailPass.tsx     # Screen-space trails (optional)

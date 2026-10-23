@@ -51,7 +51,7 @@ void main() {
 
   // Point size scaled by distance, clamped
   float dist = length(mvPosition.xyz);
-  gl_PointSize = clamp(uPointSize * (1.5 / dist), 1.0, 6.0);
+  gl_PointSize = clamp(uPointSize * 3.0 / dist, 2.0, 10.0);
 
   gl_Position = projectionMatrix * mvPosition;
 }

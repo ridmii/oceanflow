@@ -10,8 +10,8 @@ void main() {
   if (d > 0.5) discard;
 
   // Soft falloff
-  float alpha = smoothstep(0.5, 0.35, d) * vAlpha;
+  float alpha = smoothstep(0.5, 0.35, d) * vAlpha * 1.5;
 
   if (alpha < 0.01) discard;
-  gl_FragColor = vec4(vColor, alpha);
+  gl_FragColor = vec4(vColor, clamp(alpha, 0.0, 1.0));
 }
