@@ -7,6 +7,7 @@ import ControlBar from './ui/ControlBar';
 import StatsPanel from './ui/StatsPanel';
 import SourceFilter from './ui/SourceFilter';
 import Legend from './ui/Legend';
+import QueryPanel from './ui/QueryPanel';
 import { ParticleDataContext, useParticleDataSource } from './hooks/useParticleData';
 import { createDataSource } from './data/sourceConfig';
 import { usePlaybackKeyboard } from './hooks/usePlayback';
@@ -48,9 +49,10 @@ function AppInner() {
           <Legend />
           <ControlBar />
           {/* Spacer to balance the layout */}
-          <div className="w-32" aria-hidden="true" />
         </div>
       </div>
+      
+      <QueryPanel />
     </div>
   );
 }
