@@ -29,13 +29,16 @@ def main():
             print(f"[ERROR] Failed to parse meta.json: {e}")
             sys.exit(1)
 
-    required_fields = ["frameCount", "particleCount", "bytesPerParticle", "durationDays"]
+    required_fields = ["schemaVersion", "generatedAt", "startDate", "timeStepHours", "frameCount", "particleCount", "sources", "bounds", "heatmapGrid"]
     for field in required_fields:
         if field not in meta:
             print(f"[ERROR] Missing required field in meta.json: {field}")
             sys.exit(1)
+        if meta[field] is None or (isinstance(meta[field], (str, list, dict)) and len(meta[field]) == 0):
+            print(f"[ERROR] Field {field} in meta.json is empty")
+            sys.exit(1)
             
-    print("meta.json OK")
+    print("meta.json schema OK")
 
     if not frame_file.exists():
         print(f"[ERROR] frame file not found: {frame_file}")

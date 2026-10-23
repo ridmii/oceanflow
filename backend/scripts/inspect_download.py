@@ -95,7 +95,7 @@ def main() -> None:
 
     # ── 1. Dimensions ─────────────────────────────────────────────
     _section("Dimensions")
-    for dim, size in ds.dims.items():
+    for dim, size in ds.sizes.items():
         print(f"  {dim:20s}: {size}")
 
     # ── 2. Variables ──────────────────────────────────────────────
