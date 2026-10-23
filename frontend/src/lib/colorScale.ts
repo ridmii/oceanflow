@@ -4,12 +4,15 @@
 
 import * as THREE from 'three';
 
-/** Control points: [speed_m_s, r, g, b] */
+/** Control points: [speed_m_s, r, g, b]
+ *  Inferno-inspired palette — deep purple → magenta → red → orange → yellow.
+ *  Contrasts strongly against the blue Earth surface. */
 const SPEED_RAMP: [number, number, number, number][] = [
-  [0.0,  0x1a / 255, 0x3a / 255, 0x5c / 255],  // deep blue   #1a3a5c
-  [0.5,  0x2e / 255, 0x7f / 255, 0xb8 / 255],  // ocean blue  #2e7fb8
-  [1.25, 0x6e / 255, 0xc6 / 255, 0xe8 / 255],  // light cyan  #6ec6e8
-  [2.0,  0xf2 / 255, 0xf2 / 255, 0xf2 / 255],  // near-white  #f2f2f2
+  [0.0,  0x44 / 255, 0x01 / 255, 0x54 / 255],  // dark purple  #440154
+  [0.5,  0x7b / 255, 0x2d / 255, 0x8e / 255],  // magenta      #7b2d8e
+  [1.0,  0xd4 / 255, 0x48 / 255, 0x42 / 255],  // red          #d44842
+  [1.5,  0xf5 / 255, 0x7d / 255, 0x15 / 255],  // orange       #f57d15
+  [2.0,  0xfd / 255, 0xe7 / 255, 0x25 / 255],  // yellow       #fde725
 ];
 
 const GRADIENT_SIZE = 256;
@@ -57,7 +60,7 @@ export function sampleColorScale(speed: number): string {
 
 /** CSS gradient string for legend bar */
 export const LEGEND_GRADIENT =
-  `linear-gradient(to right, #1a3a5c, #2e7fb8, #6ec6e8, #f2f2f2)`;
+  `linear-gradient(to right, #440154, #7b2d8e, #d44842, #f57d15, #fde725)`;
 
 /** Speed ticks for legend */
 export const LEGEND_TICKS = [0, 0.5, 1.0, 1.5, 2.0]; // m/s

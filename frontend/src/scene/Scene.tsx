@@ -89,8 +89,9 @@ const CameraRig = memo(function CameraRig() {
 const SceneContent = memo(function SceneContent() {
   return (
     <>
-      <ambientLight intensity={0.15} />
-      <directionalLight position={[5, 3, 5]} intensity={0.8} color="#ffffff" />
+      <ambientLight intensity={0.5} />
+      <directionalLight position={[5, 3, 5]}   intensity={0.9} color="#ffffff" />
+      <directionalLight position={[-5, -2, -4]} intensity={0.3} color="#4488cc" />
       <Starfield />
       <Globe />
       <ParticleLayer />
