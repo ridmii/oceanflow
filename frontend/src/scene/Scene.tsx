@@ -11,6 +11,7 @@ import Globe from './Globe';
 import ParticleLayer from './ParticleLayer';
 import DensityHeatmap from './DensityHeatmap';
 import TrailPass from './TrailPass';
+import QueryRing from './QueryRing';
 import { usePrefersReducedMotion } from '../hooks/usePlayback';
 import { FpsSampler } from '../ui/StatsPanel';
 
@@ -97,6 +98,7 @@ const SceneContent = memo(function SceneContent() {
       <ParticleLayer />
       <DensityHeatmap />
       <TrailPass />
+      <QueryRing />
       <CameraRig />
       <FpsSampler />
     </>
