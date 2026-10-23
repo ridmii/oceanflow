@@ -2,6 +2,11 @@
   "name": "oceanflow",
   "private": true,
   "version": "0.1.0",
+  "overrides": {
+    "stats-gl": {
+      "three": "$three"
+    }
+  },
   "description": "Ocean Plastic Transport Tracker – 3D Lagrangian particle visualization",
   "type": "module",
   "scripts": {
