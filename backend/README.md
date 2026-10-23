@@ -1,266 +1,176 @@
-# OceanFlow — Backend Scaffold
+# OceanFlow — Backend
 
-Python environment setup for the Ocean Plastic Transport Tracker simulation backend.
-
-> **Scope of this scaffold:** Environment setup, credential management, dataset discovery, and test data download. The FastAPI server, Celery worker, and Parcels/PlasticParcels simulation are **not yet built**. Come back with a validated dataset ID and a working test download, and the next phase will begin.
+OceanFlow is a fast, scalable backend for the Ocean Plastic Transport Tracker. It leverages FastAPI for the REST and WebSocket APIs, Celery with Redis for asynchronous simulation task queuing, and OceanParcels to compute particle trajectories based on Copernicus Marine data. The backend serves high-density binary outputs (both raw particle coordinates and gridded heatmaps) directly to the frontend for real-time WebGL visualization.
 
 ---
 
-## Prerequisites
+## Architecture
 
-| Requirement | Version | Notes |
-|---|---|---|
-| Python | **3.11** | Required. 3.10 or 3.12 may work but are untested. |
-| conda **or** pip/venv | Any recent | Pick one path below. |
-| Internet access | — | Needed to fetch catalogue and data. |
-| Copernicus Marine account | Free | Register at https://data.marine.copernicus.eu/register |
-
----
-
-## Setup — Option A: conda (recommended)
-
-```bash
-cd backend
-
-# 1. Create the environment (downloads all packages)
-conda env create -f environment.yml
-
-# 2. Activate it
-conda activate copernicus-env
-
-# 3. Install pip-only packages (copernicusmarine, parcels, plasticparcels)
-#    These are listed in the pip: section of environment.yml and are installed
-#    automatically by conda, but re-running this is harmless.
-pip install -r requirements.txt
+```mermaid
+flowchart TD
+    User([Frontend Client])
+    
+    subgraph "Docker Compose Stack"
+        API[FastAPI Server\n:8000]
+        Worker[Celery Worker\nOceanParcels]
+        Redis[(Redis\nBroker & PubSub)]
+        Data[(Local Disk\n/data)]
+    end
+    
+    %% API Interactions
+    User -- "1. POST /api/simulate" --> API
+    User -- "2. WS /api/ws/simulate/{id}" --> API
+    User -- "3. GET /api/runs/{id}/*" --> API
+    
+    %% Internal
+    API -- "Enqueue Task" --> Redis
+    Redis -- "Consume Task" --> Worker
+    Worker -- "Publish Progress" --> Redis
+    Redis -- "Subscribe Progress" --> API
+    
+    Worker -- "Write meta, frames, density" --> Data
+    API -- "Read files" --> Data
 ```
 
-> **Note on Parcels versions:** `requirements.txt` pins `parcels==3.0.5` and
-> `plasticparcels==0.4.0`. If you need `parcels` 4.x (e.g., for unstructured
-> grid support), you must also upgrade `plasticparcels` to ≥ 0.5.0 and rewrite
-> any simulation code accordingly. See [Known Unknowns](#known-unknowns).
+---
+
+## Quick Start
+
+1. **Start the stack**
+   ```bash
+   docker-compose up --build -d
+   ```
+
+2. **Verify it is running**
+   ```bash
+   curl http://localhost:8000/api/health
+   # {"status":"ok","parcelsVersion":"3.0.5","runCount":1}
+   ```
+
+3. **Submit a simulation**
+   ```bash
+   curl -X POST http://localhost:8000/api/simulate \
+     -H "Content-Type: application/json" \
+     -d '{
+       "region":    {"west":-160,"east":-120,"south":20,"north":50},
+       "time":      {"start":"2024-01-01T00:00:00Z","end":"2024-01-08T00:00:00Z","timeStepHours":6},
+       "particles": {"count":500,"maxAgeDays":30,"windagePercent":1.5,"diffusionM2PerS":50,"beachingEnabled":false}
+     }'
+   # {"runId": "abc123...", "status": "pending"}
+   ```
+
+4. **Listen to WebSocket (using wscat or similar)**
+   ```bash
+   wscat -c ws://localhost:8000/api/ws/simulate/abc123...
+   ```
 
 ---
 
-## Setup — Option B: venv
+## API Reference
 
-```bash
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/health` | Liveness and active run count |
+| `GET` | `/api/runs` | List all available runs |
+| `GET` | `/api/runs/{id}/meta` | Returns `meta.json` for a run |
+| `GET` | `/api/runs/{id}/frames/{n}` | Returns binary particle frame (`n.bin`) |
+| `GET` | `/api/runs/{id}/density/{n}` | Returns binary density grid frame (`n.bin`) |
+| `HEAD` | `/api/runs/{id}/frames/{n}` | Check existence and Content-Length of a frame |
+| `HEAD` | `/api/runs/{id}/density/{n}` | Check existence and Content-Length of a density frame |
+| `POST` | `/api/simulate` | Enqueue a simulation task. Returns `202 Accepted` |
+| `GET` | `/api/simulate/{id}/status` | Poll run status (`pending`, `running`, `complete`, `failed`) |
+| `DELETE`| `/api/runs/{id}` | Recursively delete a complete or failed run |
+| `WS` | `/api/ws/simulate/{id}` | Real-time WebSocket feed for simulation progress |
+
+*All non-2xx API errors follow a standardized JSON format: `{"error": {"code": "...", "message": "..."}}`*
+
+---
+
+## Data Contract
+
+All simulation data is stored in the `backend/data/runs/{runId}/` directory.
+
+### `meta.json`
+Contains all configuration, timing, bounding boxes, and grid metadata needed by the frontend.
+```json
+{
+  "schemaVersion": 1,
+  "generatedAt": "2024-02-15T12:00:00Z",
+  "startDate": "2024-01-01T00:00:00Z",
+  "timeStepHours": 6,
+  "frameCount": 28,
+  "particleCount": 500,
+  "sources": [...],
+  "bounds": {"west": -160, "east": -120, "south": 20, "north": 50},
+  "heatmapGrid": {"cols": 720, "rows": 360}
+}
+```
+
+### Particle Frames (`frames/{n}.bin`)
+Every file is exactly `particleCount × 19` bytes, structured as little-endian C-structs.
+
+| Offset | Type | Size | Field |
+|---|---|---|---|
+| 0 | `float32` | 4 B | longitude |
+| 4 | `float32` | 4 B | latitude |
+| 8 | `float32` | 4 B | speed (m/s) |
+| 12 | `float32` | 4 B | age (days) |
+| 16 | `int16` | 2 B | sourceIndex |
+| 18 | `uint8` | 1 B | alive (0/1) |
+
+### Density Heatmaps (`density/{n}.bin`)
+Every file is exactly `heatmapGrid.cols × heatmapGrid.rows × 4` bytes.
+- Format: `float32` array in row-major (C-contiguous) order.
+- Top-left (Row 0, Col 0) corresponds to the North-West corner.
+- Values represent normalized particle densities.
+- Served with `X-Grid-Cols` and `X-Grid-Rows` headers for easy `Float32Array` ingestion in WebGL.
+
+---
+
+## Development
+
+Requires Python 3.11.
+
+```powershell
 cd backend
-
-# 1. Create a Python 3.11 virtual environment
-python3.11 -m venv .venv
-
-# 2. Activate it
-# macOS / Linux:
-source .venv/bin/activate
-# Windows (PowerShell):
 .venv\Scripts\Activate.ps1
 
-# 3. Install all dependencies
-pip install -r requirements.txt
+# Start API (auto-reloading)
+python -m uvicorn src.api.main:app --port 8000 --reload
+
+# Start Celery Worker (requires Redis on port 6379)
+celery -A src.worker.celery_app worker --loglevel=info --concurrency=1
+
+# Run tests
+pytest tests/ -v
 ```
+
+### Useful Scripts
+- `scripts/07_cleanup_old_runs.py`: Delete old run artifacts to reclaim disk space (run with `--older-than-days`).
+- `scripts/08_smoke_test.py`: Full end-to-end integration and liveness test.
+- `scripts/06_backfill_density.py`: Recompute density frames for older runs.
 
 ---
 
-## Configure Credentials
+## Deployment
 
-```bash
-# Copy the example file
-cp .env.example .env
+OceanFlow is designed to be deployed as a multi-container Docker Compose stack.
+Ensure `DATA_DIR` is mounted to a persistent volume so runs survive container restarts.
 
-# Open .env in your editor and fill in your credentials
-# (or leave them blank and use `copernicusmarine login` below)
-```
-
-`backend/.env` is listed in `.gitignore` and will never be committed.
+Production environment variables should be defined in a `.env` file based on `.env.example`.
+Rate limiting (`RATE_LIMIT_PER_MINUTE`) is handled in-memory by default. For distributed setups, move the token bucket to Redis.
 
 ---
 
-## Log in to Copernicus Marine
+## Troubleshooting
 
-The copernicusmarine toolbox can authenticate two ways:
+- **`503 Service Unavailable` on Simulation Submit**: The Celery broker (Redis) is down or unreachable. Verify the `REDIS_URL`.
+- **`429 Too Many Requests`**: You have hit the `MAX_CONCURRENT_SIMULATIONS` limit. Wait for the active run to finish or fail.
+- **WebSocket Drops Immediately**: Verify the `run_id` exists. Invalid or missing runs close the connection with code `1008`.
+- **Worker Hangs or OOMs**: OceanParcels can consume significant memory for large particle counts (>> 100k) over long durations. Constrain bounds and particle counts via API validation.
 
-**Option 1 — cached token (preferred):**
-```bash
-copernicusmarine login
-# Follow the prompts. Token is saved to ~/.copernicusmarine/
-# You only need to do this once per machine (token lasts ~30 days).
-```
+## Known Limitations
 
-**Option 2 — credentials in .env:**
-```bash
-# Set in backend/.env:
-COPERNICUS_USERNAME=your_email@example.com
-COPERNICUS_PASSWORD=yourpassword
-```
-
-Both options are supported by all scripts.
-
----
-
-## Scripts
-
-Run all scripts from the `backend/` directory with the environment activated.
-
-### 1. Test the connection
-
-```bash
-python scripts/test_connection.py
-```
-
-Calls the Copernicus Marine catalogue API (metadata only, no download).
-Prints `[OK] Connection successful` or a diagnosis of what went wrong.
-
----
-
-### 2. Discover dataset IDs
-
-```bash
-python scripts/discover_datasets.py
-
-# Filter a different product:
-python scripts/discover_datasets.py --product GLOBAL_ANALYSISFORECAST_PHY_001_024
-```
-
-Queries the catalogue for all datasets in the Global Ocean Physics product,
-highlights those with `uo` and `vo` surface current variables, and prints
-a ready-to-paste `copernicusmarine subset` command.
-
-> ⚠ Always verify your chosen dataset in the **MyOcean Pro viewer** before
-> downloading: https://data.marine.copernicus.eu/viewer/expert
-
-After choosing a dataset, add its ID to `backend/.env`:
-
-```
-COPERNICUS_DATASET_ID=cmems_mod_glo_phy_anfc_0.083deg_P1D-m
-```
-
----
-
-### 3. Download a test subset
-
-```bash
-python scripts/download_test_subset.py
-```
-
-Downloads a small surface-current subset (uo + vo, surface layer, ≤ 7 days)
-using `copernicusmarine.subset()`. Safety guards prevent accidentally
-downloading large datasets.
-
-Saved to: `backend/data/test/test_currents.nc`
-
-You can override parameters on the command line:
-
-```bash
-python scripts/download_test_subset.py \
-    --west -160 --east -120 --south 20 --north 50 \
-    --start 2024-01-01 --end 2024-01-02
-```
-
----
-
-### 4. Inspect the downloaded file
-
-```bash
-python scripts/inspect_download.py data/test/test_currents.nc
-```
-
-Prints dimensions, variable statistics, coordinate ranges, and NaN counts.
-Saves a quiver plot to `backend/data/test/inspect_plot.png`.
-Outputs a final verdict: **LOOKS VALID** or a list of problems.
-
----
-
-## Find a Dataset ID (Manual Step)
-
-1. Run `python scripts/discover_datasets.py` — it will suggest a dataset ID.
-2. Cross-check at **https://data.marine.copernicus.eu/viewer/expert**:
-   - Search for product `GLOBAL_ANALYSISFORECAST_PHY_001_024`.
-   - Verify `uo` and `vo` are listed as available variables.
-   - Check the temporal and spatial extent covers your region of interest.
-3. Set `COPERNICUS_DATASET_ID=<your-dataset-id>` in `backend/.env`.
-
----
-
-## Project Structure
-
-```
-backend/
-├── .env.example          # Template — copy to .env and fill in
-├── .env                  # Your credentials (gitignored)
-├── .gitignore
-├── environment.yml       # conda environment definition
-├── requirements.txt      # pip requirements (Python 3.11)
-├── README.md
-├── config/
-│   ├── simulation.yaml   # Simulation parameters (region, time, particles)
-│   └── sources.csv       # 20 river sources (Meijer et al. 2021)
-├── scripts/
-│   ├── test_connection.py       # Verify Copernicus Marine is reachable
-│   ├── discover_datasets.py     # Browse catalogue, find dataset ID
-│   ├── download_test_subset.py  # Download small test subset
-│   └── inspect_download.py      # Validate + plot downloaded NetCDF
-├── src/
-│   ├── __init__.py
-│   ├── data/
-│   │   ├── __init__.py
-│   │   └── copernicus_client.py  # Credential loader, config validator
-│   └── utils/
-│       ├── __init__.py
-│       └── paths.py               # PROJECT_ROOT, DATA_DIR, run helpers
-├── data/                  # Downloaded data (gitignored)
-│   └── .gitkeep
-└── notebooks/             # Jupyter exploration notebooks (gitignored)
-    └── .gitkeep
-```
-
----
-
-## Full Quickstart (copy-paste order)
-
-```bash
-# ── 1. Setup (conda path) ─────────────────────────────────────────
-cd backend
-conda env create -f environment.yml
-conda activate copernicus-env
-
-# ── 2. Configure credentials ──────────────────────────────────────
-cp .env.example .env
-# Edit .env with your credentials, OR use login below
-
-# ── 3. Log in ─────────────────────────────────────────────────────
-copernicusmarine login
-
-# ── 4. Verify connection ──────────────────────────────────────────
-python scripts/test_connection.py
-
-# ── 5. Find your dataset ID ───────────────────────────────────────
-python scripts/discover_datasets.py
-# → Edit backend/.env: COPERNICUS_DATASET_ID=<chosen-id>
-
-# ── 6. Download a test subset ─────────────────────────────────────
-python scripts/download_test_subset.py
-
-# ── 7. Inspect the download ───────────────────────────────────────
-python scripts/inspect_download.py data/test/test_currents.nc
-```
-
----
-
-## Known Unknowns
-
-| Unknown | Impact | How to resolve |
-|---|---|---|
-| **Parcels v3 vs v4 API** | `parcels` 4.x has a substantially different API than 3.x. `plasticparcels 0.4.0` is the last release supporting v3. Future `plasticparcels` versions will require v4. | Pin as in `requirements.txt`; verify with `pip show parcels plasticparcels` after install. |
-| **Exact dataset ID** | Cannot be determined without authenticating. Different dataset IDs cover different resolutions and time frequencies (daily, hourly). | Run `python scripts/discover_datasets.py` after login. |
-| **Dataset availability window** | The Analysis & Forecast product typically provides ~10 days of forecast and a multi-year reanalysis. The right dataset ID depends on whether you want real-time or historical data. | Check temporal coverage in discover output and MyOcean viewer. |
-| **`copernicusmarine.describe()` response schema** | The JSON schema of `describe()` changes between toolbox releases. `discover_datasets.py` uses defensive `dict.get()` calls throughout. | If discover fails, upgrade: `pip install --upgrade copernicusmarine`. |
-| **PlasticParcels coastline data** | `plasticparcels` requires a global coastline/bathymetry dataset for beaching. It is not downloaded here. | Will be addressed in the simulation phase. |
-
----
-
-## Credentials Security
-
-- **Never** hardcode credentials in Python files.
-- `backend/.env` is in `.gitignore` — it will not be committed.
-- The `copernicusmarine login` token is cached in `~/.copernicusmarine/` (your home directory) and is also never committed.
-- If you must share this repo, double-check with `git status` that `.env` is not staged.
+- Real-time density streaming (sending heatmap grids via WebSockets) is unsupported due to payload size. Heatmaps are read-only REST endpoints fetched post-simulation or progressively by the frontend.
+- Rate limiting is currently in-memory per-worker process.
+- Active run limits are enforced by counting `DONE`/`FAILED` markers on disk, requiring a shared volume between API and Worker.

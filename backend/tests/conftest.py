@@ -1,0 +1,13 @@
+"""
+tests/conftest.py
+=================
+Shared pytest configuration.
+"""
+import pytest
+
+
+# Use asyncio event loop for all async tests
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers", "asyncio: mark test as async"
+    )
